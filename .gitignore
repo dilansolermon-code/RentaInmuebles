@@ -1,0 +1,15 @@
+# Archivos que Git NO debe subir a GitHub
+
+# Lo que genera "Clean and Build" (se vuelve a crear en cada computador)
+target/
+
+# Configuración personal de NetBeans
+nbproject/private/
+
+# Contraseña de PostgreSQL de cada persona (NUNCA se sube)
+src/main/resources/db.properties
+
+# Archivos temporales del sistema
+*.log
+Thumbs.db
+.DS_Store

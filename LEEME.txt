@@ -1,0 +1,1 @@
+RENTADÍAS - Las instrucciones actualizadas para instalar y ejecutar el proyecto están en README.md

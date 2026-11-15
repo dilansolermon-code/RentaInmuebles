@@ -1,0 +1,8 @@
+<%-- PIE DE PÁGINA COMÚN: cierra el contenido abierto en encabezado.jspf --%>
+</main>
+<footer class="pie">
+    <p><strong>RentaDías</strong> · Sistema de renta de inmuebles por días</p>
+    <p>Proyecto final de Informática · Dilan Soler Monsalve y Yina Fernanda Castiblanco Pinilla · 2026</p>
+</footer>
+</body>
+</html>

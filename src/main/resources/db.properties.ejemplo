@@ -1,0 +1,7 @@
+# Datos de conexión a PostgreSQL.
+# 1. Copia este archivo en la misma carpeta con el nombre: db.properties
+# 2. Escribe tu contraseña del usuario postgres en "clave".
+# db.properties no se sube a GitHub (está en .gitignore).
+url=jdbc:postgresql://localhost:5432/proyecto_renta_inmuebles
+usuario=postgres
+clave=1234

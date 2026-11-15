@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    pom.xml: archivo de configuración de Maven.
+    Le dice a NetBeans qué tipo de proyecto es (aplicación web .war),
+    qué versión de Java usar y qué librerías necesita.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.rentainmuebles</groupId>
+    <artifactId>RentaInmuebles</artifactId>
+    <version>1.0</version>
+    <packaging>war</packaging>
+    <name>RentaInmuebles</name>
+
+    <properties>
+        <!-- Versión de Java con la que se compila (17 o superior) -->
+        <maven.compiler.release>17</maven.compiler.release>
+        <!-- Codificación de los archivos, para que las tildes y la ñ se vean bien -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Pistas para NetBeans: perfil web de Jakarta EE 10 y servidor Tomcat -->
+        <netbeans.hint.j2eeVersion>10-web</netbeans.hint.j2eeVersion>
+        <netbeans.hint.deploy.server>Tomcat</netbeans.hint.deploy.server>
+    </properties>
+
+    <dependencies>
+        <!-- API web de Jakarta EE 10 (Servlets y JSP), la que soporta Tomcat 10.1.
+             "provided" = Tomcat ya la trae, no se empaqueta en el .war -->
+        <dependency>
+            <groupId>jakarta.platform</groupId>
+            <artifactId>jakarta.jakartaee-web-api</artifactId>
+            <version>10.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Driver JDBC de PostgreSQL: el "puente" entre Java y la base de datos.
+             Se empaqueta dentro del .war (WEB-INF/lib) -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.7.4</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>RentaInmuebles</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>3.4.0</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>

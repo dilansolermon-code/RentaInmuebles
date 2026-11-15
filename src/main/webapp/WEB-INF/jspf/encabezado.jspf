@@ -1,0 +1,62 @@
+<%--
+    ENCABEZADO COMÚN (se incluye al inicio de todas las páginas).
+    Cada página debe crear antes dos variables:
+      - titulo : texto de la pestaña del navegador
+      - rol    : "publico", "cliente", "propietario" o "admin"
+    Según el rol, el menú muestra opciones distintas.
+--%>
+<%
+    String ctx = request.getContextPath();   // ruta base de la app, ej: /RentaInmuebles
+    // Usuario guardado en la sesión por LoginServlet (null si nadie ha iniciado sesión)
+    com.rentainmuebles.modelo.Usuario usuarioSesion =
+            (com.rentainmuebles.modelo.Usuario) session.getAttribute("usuario");
+    String nombreSesion = (usuarioSesion != null) ? usuarioSesion.getNombre() : "";
+    // ¿Tiene más de un rol? Entonces el menú muestra "Cambiar rol"
+    java.util.List<?> rolesSesion = (java.util.List<?>) session.getAttribute("roles");
+    boolean variosRoles = usuarioSesion != null && rolesSesion != null && rolesSesion.size() > 1;
+    String cambiarRol = variosRoles ? "<a href=\"" + ctx + "/elegir-rol.jsp\">Cambiar rol</a>" : "";
+%>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= titulo %> | RentaDías</title>
+    <link rel="stylesheet" href="<%= ctx %>/css/estilos.css">
+</head>
+<body>
+<header class="barra">
+    <div class="barra-interior">
+        <a class="marca" href="<%= ctx %>/index.jsp">Renta<span>Días</span></a>
+
+        <nav class="menu">
+        <% if (rol.equals("cliente")) { %>
+            <a href="<%= ctx %>/cliente/buscar.jsp">Buscar inmuebles</a>
+            <a href="<%= ctx %>/cliente/reservas.jsp">Mis reservas</a>
+            <a href="<%= ctx %>/perfil.jsp">Mi perfil</a>
+            <span class="usuario"><%= com.rentainmuebles.util.Html.esc(nombreSesion) %> · Cliente</span>
+            <%= cambiarRol %>
+            <a class="btn btn-sec btn-peq" href="<%= ctx %>/salir">Cerrar sesión</a>
+        <% } else if (rol.equals("propietario")) { %>
+            <a href="<%= ctx %>/propietario/inmuebles.jsp">Mis inmuebles</a>
+            <a href="<%= ctx %>/propietario/registrar.jsp">Registrar inmueble</a>
+            <a href="<%= ctx %>/perfil.jsp">Mi perfil</a>
+            <span class="usuario"><%= com.rentainmuebles.util.Html.esc(nombreSesion) %> · Propietario</span>
+            <%= cambiarRol %>
+            <a class="btn btn-sec btn-peq" href="<%= ctx %>/salir">Cerrar sesión</a>
+        <% } else if (rol.equals("admin")) { %>
+            <a href="<%= ctx %>/admin/inmuebles.jsp">Inmuebles</a>
+            <a href="<%= ctx %>/admin/usuarios.jsp">Usuarios</a>
+            <a href="<%= ctx %>/admin/reportes.jsp">Reportes</a>
+            <span class="usuario"><%= com.rentainmuebles.util.Html.esc(nombreSesion) %> · Administrador</span>
+            <%= cambiarRol %>
+            <a class="btn btn-sec btn-peq" href="<%= ctx %>/salir">Cerrar sesión</a>
+        <% } else { %>
+            <a href="<%= ctx %>/cliente/buscar.jsp">Buscar inmuebles</a>
+            <a href="<%= ctx %>/login.jsp">Iniciar sesión</a>
+            <a class="btn btn-peq" href="<%= ctx %>/registro.jsp">Registrarse</a>
+        <% } %>
+        </nav>
+    </div>
+</header>
+<main class="contenedor">
