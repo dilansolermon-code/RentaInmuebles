@@ -1,8 +1,8 @@
 <%-- MI PERFIL: datos del usuario con sesión (cliente o propietario). Lo guarda PerfilServlet --%>
 <%@ page contentType="text/html;charset=UTF-8"
          import="java.util.List, java.util.ArrayList,
-                 com.rentainmuebles.datos.UsuarioDAO, com.rentainmuebles.datos.CatalogoDAO,
-                 com.rentainmuebles.modelo.Usuario, com.rentainmuebles.modelo.Perfil, com.rentainmuebles.modelo.Banco" %>
+                 com.rentainmuebles.modelo.Usuario, com.rentainmuebles.modelo.Perfil, com.rentainmuebles.modelo.Banco,
+                 com.rentainmuebles.util.Html" %>
 <%
     // 1. Solo clientes y propietarios con sesión
     Usuario u = (Usuario) session.getAttribute("usuario");
@@ -13,13 +13,13 @@
     String titulo = "Mi perfil";
     String rol = u.getRol();                       // el menú cambia según el rol
 
-    // 2. Datos actuales desde la base
+    // 2. El usuario consulta su propio perfil; los bancos los da la clase Banco
     Perfil perfil = null;
     List<Banco> bancos = new ArrayList<>();
     String errorBD = null;
     try {
-        perfil = new UsuarioDAO().obtenerPerfil(u.getId(), u.getRol());
-        bancos = new CatalogoDAO().listarBancos();
+        perfil = u.consultarPerfil();
+        bancos = Banco.listarTodos();
     } catch (Exception e) {
         errorBD = e.getMessage();
     }
@@ -33,16 +33,16 @@
         <div class="alerta alerta-ok">Tus datos se actualizaron correctamente.</div>
     <% } %>
     <% if ("datos".equals(error)) { %>
-        <div class="alerta alerta-aviso">Revisa los datos: nombre, correo y cuenta (6 a 16 dígitos).</div>
+        <div class="alerta alerta-aviso">Por favor, complete todos los campos correctamente: nombre, correo y cuenta (6 a 16 dígitos).</div>
     <% } else if ("email".equals(error)) { %>
-        <div class="alerta alerta-aviso">Ese correo ya lo usa otra cuenta.</div>
+        <div class="alerta alerta-aviso">El correo electrónico ya está en uso por otra cuenta.</div>
     <% } else if ("cuentaRepetida".equals(error)) { %>
         <div class="alerta alerta-aviso">Ese número de cuenta ya está registrado por otra persona. Escribe otro número de cuenta.</div>
     <% } else if ("bd".equals(error)) { %>
         <div class="alerta alerta-aviso">No se pudo guardar en la base de datos.</div>
     <% } %>
     <% if (errorBD != null) { %>
-        <div class="alerta alerta-aviso">No se pudo consultar la base de datos: <%= errorBD %></div>
+        <div class="alerta alerta-aviso">No se pudo consultar la base de datos: <%= Html.esc(errorBD) %></div>
     <% } %>
 
     <% if (perfil != null) { %>
@@ -56,15 +56,15 @@
                 <div class="grid grid-2">
                     <div class="campo">
                         <label for="nombre">Nombre completo</label>
-                        <input id="nombre" name="nombre" value="<%= perfil.getNombre() %>" required>
+                        <input id="nombre" name="nombre" value="<%= Html.esc(perfil.getNombre()) %>" required>
                     </div>
                     <div class="campo">
                         <label for="telefono">Teléfono</label>
-                        <input id="telefono" name="telefono" value="<%= perfil.getTelefono() != null ? perfil.getTelefono() : "" %>">
+                        <input id="telefono" name="telefono" value="<%= perfil.getTelefono() != null ? Html.esc(perfil.getTelefono()) : "" %>">
                     </div>
                     <div class="campo">
                         <label for="email">Correo electrónico</label>
-                        <input id="email" name="email" type="email" value="<%= perfil.getEmail() %>" required>
+                        <input id="email" name="email" type="email" value="<%= Html.esc(perfil.getEmail()) %>" required>
                     </div>
                     <div class="campo">
                         <label>Tipo de cuenta en la plataforma</label>

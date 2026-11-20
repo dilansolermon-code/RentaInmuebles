@@ -41,7 +41,7 @@ public class CatalogoDAO {
     }
 
     /**
-     * Ciudades que tienen inmuebles publicados, con cuántos tiene cada una,
+     * Ciudades que tienen inmuebles publicados y APROBADOS, con cuántos tiene cada una,
      * de la que más tiene a la que menos. Ej: {Bogotá=12, Medellín=8, ...}
      * "Publicado" = el inmueble tiene fila en propietario_inmueble.
      */
@@ -50,6 +50,7 @@ public class CatalogoDAO {
                    + "FROM ciudad c "
                    + "JOIN inmueble i ON i.id_ciudad = c.id "
                    + "JOIN propietario_inmueble pi ON pi.id_inmueble = i.id "
+                   + "WHERE i.estado_aprobacion = 'aprobada' "          // igual que lo que ve el cliente
                    + "GROUP BY c.nombre "
                    + "ORDER BY total DESC, c.nombre";
         Map<String, Long> conteo = new LinkedHashMap<>();         // guarda el orden de la consulta

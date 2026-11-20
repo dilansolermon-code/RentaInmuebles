@@ -1,6 +1,5 @@
 package com.rentainmuebles.controlador;
 
-import com.rentainmuebles.datos.UsuarioDAO;
 import com.rentainmuebles.modelo.Usuario;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -53,15 +52,14 @@ public class RegistroServlet extends HttpServlet {
             return;
         }
 
-        // 3. Guardar
+        // 3. Guardar (se le pide al modelo, no a la base de datos)
         try {
-            UsuarioDAO dao = new UsuarioDAO();
-            List<Usuario> cuentas = dao.buscarRolesPorEmail(email);   // roles que ya tiene ese correo
+            List<Usuario> cuentas = Usuario.buscarPorEmail(email);     // roles que ya tiene ese correo
 
             // 3a. Correo nuevo: se crea el usuario con su rol
             if (cuentas.isEmpty()) {
-                dao.registrar(tipo, nombre, telefono, email, contrasena,
-                              idCiudad, tipoPersona, idBanco, numeroCta, tipoCta);
+                Usuario.registrar(tipo, nombre, telefono, email, contrasena,
+                                  idCiudad, tipoPersona, idBanco, numeroCta, tipoCta);
                 response.sendRedirect(request.getContextPath() + "/login.jsp?registrado=1");
                 return;
             }
@@ -80,7 +78,7 @@ public class RegistroServlet extends HttpServlet {
                 response.sendRedirect(volver + "clave");
                 return;
             }
-            dao.agregarRol(existente.getId(), tipo, idCiudad, tipoPersona, idBanco, numeroCta, tipoCta);
+            existente.agregarRol(tipo, idCiudad, tipoPersona, idBanco, numeroCta, tipoCta);
             response.sendRedirect(request.getContextPath() + "/login.jsp?registrado=rol");
         } catch (SQLException e) {
             getServletContext().log("Error al registrar usuario", e);

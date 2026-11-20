@@ -26,7 +26,7 @@
 <%@ include file="/WEB-INF/jspf/encabezado.jspf" %>
 
 <% if (request.getParameter("pagada") != null) { %>
-    <div class="alerta alerta-ok">Reserva confirmada. El pago quedó vinculado con tu banco.</div>
+    <div class="alerta alerta-ok">Reserva confirmada. El pago quedó vinculado con tu banco y se abonó al propietario.</div>
 <% } %>
 <% if (request.getParameter("cancelada") != null) { %>
     <div class="alerta alerta-aviso">Reserva cancelada. Las fechas quedaron libres.</div>
@@ -35,7 +35,7 @@
     <div class="alerta alerta-aviso">No se pudo cancelar la reserva.</div>
 <% } %>
 <% if (errorBD != null) { %>
-    <div class="alerta alerta-aviso">No se pudo consultar la base de datos: <%= errorBD %></div>
+    <div class="alerta alerta-aviso">No se pudo consultar la base de datos: <%= com.rentainmuebles.util.Html.esc(errorBD) %></div>
 <% } %>
 
 <div class="titulo-seccion">
@@ -62,13 +62,13 @@
             </tr>
         </thead>
         <tbody>
-        <% if (rentas.isEmpty()) { %>
-            <tr><td colspan="9" class="suave">Aún no tienes reservas realizadas.</td></tr>
+        <% if (rentas.isEmpty() && errorBD == null) { %>
+            <tr><td colspan="9" class="suave">Aún no tienes reservas realizadas. ¡Explora nuestros inmuebles!</td></tr>
         <% } %>
 
         <% for (Renta r : rentas) {
-               // En la base el estado es "activo" o "inactivo"; aquí se muestra en palabras
-               String estado = r.getEstadoTexto();            // "Pagada", "Finalizada" o "Cancelada"
+               // La renta sabe decir su estado en palabras: "Pagada", "Finalizada" o "Cancelada"
+               String estado = r.getEstadoTexto();
                String clase = "neutro";                       // color de la insignia
                if (estado.equals("Pagada")) clase = "ok";
                if (estado.equals("Cancelada")) clase = "mal";

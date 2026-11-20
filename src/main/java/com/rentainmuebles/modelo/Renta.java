@@ -8,11 +8,15 @@ import java.time.temporal.ChronoUnit;
  */
 public class Renta {
 
+    // Valores posibles de la columna estado
+    public static final String ACTIVA = "activo";      // pagada
+    public static final String CANCELADA = "inactivo";
+
     private int id;
     private LocalDate fechaEntrada;
     private LocalDate fechaSalida;
     private double valor;
-    private String estado;        // en la base: "activo" (pagada) o "inactivo" (cancelada)
+    private String estado;        // ACTIVA o CANCELADA
     private int idInmueble;
     private String direccion;     // del inmueble rentado
     private String ciudad;
@@ -38,7 +42,7 @@ public class Renta {
 
     /** true si la renta está activa (pagada). */
     public boolean estaActiva() {
-        return estado.equals("activo");
+        return ACTIVA.equals(estado);
     }
 
     /**

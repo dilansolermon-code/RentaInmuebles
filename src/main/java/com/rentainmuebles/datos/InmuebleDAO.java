@@ -10,29 +10,36 @@ import java.util.List;
 
 /**
  * Acceso a la tabla inmueble (con su ciudad, precio y propietario).
- * Un inmueble está PUBLICADO cuando tiene su registro en propietario_inmueble
- * (relación Asocia). Retirarlo borra solo ese registro: el inmueble y sus rentas se conservan.
+ * Un inmueble se asocia a su propietario en propietario_inmueble (relación Asocia).
+ * Su estado_aprobacion dice qué ve cada actor:
+ *   pendiente -> espera revisión, aprobada -> la ven los clientes,
+ *   rechazado -> no se publica, retirado -> el propietario o el admin lo quitó.
  */
 public class InmuebleDAO {
 
-    // Parte común de las consultas: solo inmuebles publicados (JOIN con propietario_inmueble)
+    // Parte común de las consultas
     private static final String SELECT_BASE =
-          "SELECT i.id, i.direccion, i.area_mts, i.numero_habitaciones, i.capacidad, "
-        + "       c.nombre AS ciudad, pi.precio_noche, u.nombre AS propietario "
+          "SELECT i.id, i.direccion, i.area_mts, i.numero_habitaciones, i.capacidad, i.estado_aprobacion, "
+        + "       c.nombre AS ciudad, pi.precio_noche, pi.id_propietario, "
+        + "       u.nombre AS propietario, u.email AS email_propietario "
         + "FROM inmueble i "
         + "JOIN ciudad c ON c.id = i.id_ciudad "
         + "JOIN propietario_inmueble pi ON pi.id_inmueble = i.id "
         + "LEFT JOIN usuario u ON u.id = pi.id_propietario ";
 
+    // Condición que se repite: solo inmuebles aprobados (lo único que ve el cliente)
+    private static final String SOLO_APROBADOS = " i.estado_aprobacion = '" + Inmueble.APROBADA + "' ";
+
     // ======================= CLIENTE =======================
 
     /**
-     * Lista los inmuebles de una ciudad con capacidad para cierto número de personas.
+     * Lista los inmuebles APROBADOS de una ciudad con capacidad para cierto número de personas.
      * Si ciudad está vacía, trae todas las ciudades.
      */
     public List<Inmueble> buscar(String ciudad, int personas) throws SQLException {
         String sql = SELECT_BASE
-                   + "WHERE (? = '' OR c.nombre = ?) AND i.capacidad >= ? "
+                   + "WHERE" + SOLO_APROBADOS
+                   + "  AND (? = '' OR c.nombre = ?) AND i.capacidad >= ? "
                    + "ORDER BY i.id";
         try (Connection con = Conexion.obtener();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -43,9 +50,9 @@ public class InmuebleDAO {
         }
     }
 
-    /** Busca un inmueble publicado por su id. Devuelve null si no existe. */
+    /** Un inmueble APROBADO por su id (detalle y pago del cliente). null si no existe o no está aprobado. */
     public Inmueble buscarPorId(int id) throws SQLException {
-        String sql = SELECT_BASE + "WHERE i.id = ?";
+        String sql = SELECT_BASE + "WHERE i.id = ? AND" + SOLO_APROBADOS;
         try (Connection con = Conexion.obtener();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, id);
@@ -56,7 +63,7 @@ public class InmuebleDAO {
 
     // ======================= PROPIETARIO =======================
 
-    /** Inmuebles publicados por un propietario. */
+    /** Inmuebles de un propietario, en cualquier estado (también los retirados). */
     public List<Inmueble> listarPorPropietario(int idPropietario) throws SQLException {
         String sql = SELECT_BASE + "WHERE pi.id_propietario = ? ORDER BY i.id";
         try (Connection con = Conexion.obtener();
@@ -78,21 +85,25 @@ public class InmuebleDAO {
         }
     }
 
-    /** Registra un inmueble y lo publica (inmueble + propietario_inmueble) en una transacción. */
+    /**
+     * Registra un inmueble y lo asocia al propietario (inmueble + propietario_inmueble) en una transacción.
+     * Queda 'pendiente' hasta que el administrador lo apruebe.
+     */
     public int registrar(int idPropietario, String direccion, double areaMts, int habitaciones,
                          int capacidad, int idCiudad, double precioNoche) throws SQLException {
         try (Connection con = Conexion.obtener()) {
             con.setAutoCommit(false);
             try {
                 int idInmueble;
-                String sqlInmueble = "INSERT INTO inmueble (id, direccion, area_mts, numero_habitaciones, capacidad, id_ciudad) "
-                                   + "VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM inmueble), ?, ?, ?, ?, ?) RETURNING id";
+                String sqlInmueble = "INSERT INTO inmueble (id, direccion, area_mts, numero_habitaciones, capacidad, id_ciudad, estado_aprobacion) "
+                                   + "VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM inmueble), ?, ?, ?, ?, ?, ?) RETURNING id";
                 try (PreparedStatement ps = con.prepareStatement(sqlInmueble)) {
                     ps.setString(1, direccion);
                     ps.setDouble(2, areaMts);
                     ps.setInt(3, habitaciones);
                     ps.setInt(4, capacidad);
                     ps.setInt(5, idCiudad);
+                    ps.setString(6, Inmueble.PENDIENTE);
                     try (ResultSet rs = ps.executeQuery()) {
                         rs.next();
                         idInmueble = rs.getInt(1);
@@ -166,23 +177,32 @@ public class InmuebleDAO {
         }
     }
 
-    /** El propietario retira (deja de publicar) uno de sus inmuebles. */
+    /**
+     * El propietario retira uno de sus inmuebles: queda en estado 'retirado'.
+     * Se conserva la asociación con el propietario y el historial de rentas.
+     */
     public boolean retirar(int idPropietario, int idInmueble) throws SQLException {
+        String sql = "UPDATE inmueble SET estado_aprobacion = ? "
+                   + "WHERE id = ? AND id IN (SELECT id_inmueble FROM propietario_inmueble WHERE id_propietario = ?)";
         try (Connection con = Conexion.obtener();
-             PreparedStatement ps = con.prepareStatement(
-                     "DELETE FROM propietario_inmueble WHERE id_propietario = ? AND id_inmueble = ?")) {
-            ps.setInt(1, idPropietario);
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, Inmueble.RETIRADO);
             ps.setInt(2, idInmueble);
+            ps.setInt(3, idPropietario);
             return ps.executeUpdate() > 0;
         }
     }
 
     // ======================= ADMINISTRADOR =======================
 
-    /** Inmuebles publicados que coinciden con un texto (dirección, ciudad o propietario). Máximo 100. */
-    public List<Inmueble> buscarComoAdmin(String texto) throws SQLException {
+    /**
+     * Inmuebles que coinciden con un texto (dirección, ciudad o propietario). Máximo 100.
+     * estado: "pendiente", "aprobada", "rechazado", "retirado", o vacío para traer todos.
+     */
+    public List<Inmueble> buscarComoAdmin(String texto, String estado) throws SQLException {
         String sql = SELECT_BASE
-                   + "WHERE i.direccion ILIKE ? OR c.nombre ILIKE ? OR u.nombre ILIKE ? "
+                   + "WHERE (i.direccion ILIKE ? OR c.nombre ILIKE ? OR u.nombre ILIKE ?) "
+                   + "  AND (? = '' OR i.estado_aprobacion = ?) "        // filtro opcional por estado
                    + "ORDER BY i.id DESC LIMIT 100";
         try (Connection con = Conexion.obtener();
              PreparedStatement ps = con.prepareStatement(sql)) {
@@ -190,17 +210,36 @@ public class InmuebleDAO {
             ps.setString(1, patron);
             ps.setString(2, patron);
             ps.setString(3, patron);
+            ps.setString(4, estado);
+            ps.setString(5, estado);
             return leerLista(ps);
         }
     }
 
-    /** El administrador retira un inmueble de la plataforma (sin importar el propietario). */
-    public boolean retirarComoAdmin(int idInmueble) throws SQLException {
+    /** Un inmueble por id en cualquier estado (null si no existe). */
+    public Inmueble buscarComoAdminPorId(int idInmueble) throws SQLException {
+        String sql = SELECT_BASE + "WHERE i.id = ?";
         try (Connection con = Conexion.obtener();
-             PreparedStatement ps = con.prepareStatement("DELETE FROM propietario_inmueble WHERE id_inmueble = ?")) {
+             PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, idInmueble);
+            List<Inmueble> lista = leerLista(ps);
+            return lista.isEmpty() ? null : lista.get(0);
+        }
+    }
+
+    /** Cambia el estado de aprobación. Devuelve true si lo cambió. */
+    public boolean cambiarEstadoAprobacion(int idInmueble, String nuevoEstado) throws SQLException {
+        try (Connection con = Conexion.obtener();
+             PreparedStatement ps = con.prepareStatement("UPDATE inmueble SET estado_aprobacion = ? WHERE id = ?")) {
+            ps.setString(1, nuevoEstado);
+            ps.setInt(2, idInmueble);
             return ps.executeUpdate() > 0;
         }
+    }
+
+    /** El administrador retira un inmueble de la plataforma (queda en estado 'retirado'). */
+    public boolean retirarComoAdmin(int idInmueble) throws SQLException {
+        return cambiarEstadoAprobacion(idInmueble, Inmueble.RETIRADO);
     }
 
     // ======================= APOYO =======================
@@ -210,7 +249,7 @@ public class InmuebleDAO {
         List<Inmueble> lista = new ArrayList<>();
         try (ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                lista.add(new Inmueble(
+                Inmueble i = new Inmueble(
                         rs.getInt("id"),
                         rs.getString("direccion"),
                         rs.getDouble("area_mts"),
@@ -218,7 +257,11 @@ public class InmuebleDAO {
                         rs.getInt("capacidad"),
                         rs.getString("ciudad"),
                         rs.getDouble("precio_noche"),
-                        rs.getString("propietario")));
+                        rs.getString("propietario"));
+                i.setEstadoAprobacion(rs.getString("estado_aprobacion"));
+                i.setIdPropietario(rs.getInt("id_propietario"));
+                i.setEmailPropietario(rs.getString("email_propietario"));
+                lista.add(i);
             }
         }
         return lista;

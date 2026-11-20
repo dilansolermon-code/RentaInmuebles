@@ -1,6 +1,5 @@
 package com.rentainmuebles.controlador;
 
-import com.rentainmuebles.datos.UsuarioDAO;
 import com.rentainmuebles.modelo.Usuario;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -31,7 +30,7 @@ public class PerfilServlet extends HttpServlet {
         String tipoCta   = request.getParameter("tipoCta");
         int idBanco = Validar.entero(request.getParameter("idBanco"));
 
-        // Si deja el número vacío, se conserva el que tenía (se envía null al DAO)
+        // Si deja el número vacío, se conserva el que tenía (se envía null)
         String numeroNuevo = numeroCta.isEmpty() ? null : numeroCta;
         boolean cuentaValida = numeroNuevo == null
                 ? idBanco > 0 && ("Ahorros".equals(tipoCta) || "Corriente".equals(tipoCta))
@@ -43,17 +42,13 @@ public class PerfilServlet extends HttpServlet {
         }
 
         try {
-            UsuarioDAO dao = new UsuarioDAO();
             // Si cambió el email, no puede ser uno que ya use otra persona
-            if (!email.equals(u.getEmail()) && dao.emailExiste(email)) {
+            if (!email.equals(u.getEmail()) && Usuario.emailExiste(email)) {
                 response.sendRedirect(inicio + "/perfil.jsp?error=email");
                 return;
             }
-            dao.actualizarPerfil(u.getId(), u.getRol(), nombre, telefono, email, idBanco, numeroNuevo, tipoCta);
-            // Actualiza el mismo objeto de la sesión para que el nombre nuevo se vea en el menú
-            u.setNombre(nombre);
-            u.setTelefono(telefono);
-            u.setEmail(email);
+            // El mismo objeto de la sesión se actualiza a sí mismo (base de datos y atributos)
+            u.actualizarPerfil(nombre, telefono, email, idBanco, numeroNuevo, tipoCta);
             response.sendRedirect(inicio + "/perfil.jsp?guardado=1");
         } catch (SQLException e) {
             getServletContext().log("Error al actualizar el perfil", e);

@@ -1,16 +1,16 @@
 <%-- PÁGINA DE INICIO (pública): presentación, buscador rápido y destinos (datos desde PostgreSQL) --%>
 <%@ page contentType="text/html;charset=UTF-8"
          import="java.util.Map, java.util.LinkedHashMap, java.util.TreeMap,
-                 com.rentainmuebles.datos.CatalogoDAO, com.rentainmuebles.util.Html" %>
+                 com.rentainmuebles.modelo.Ciudad, com.rentainmuebles.util.Html" %>
 <%
     String titulo = "Inicio";     // texto de la pestaña
     String rol = "publico";       // menú para visitantes sin sesión
 
-    // Ciudades con inmuebles publicados y cuántos tiene cada una (de mayor a menor)
+    // Ciudades con inmuebles aprobados y cuántos tiene cada una (de mayor a menor)
     Map<String, Long> conteo = new LinkedHashMap<>();
     String errorBD = null;
     try {
-        conteo = new CatalogoDAO().contarInmueblesPorCiudad();
+        conteo = Ciudad.contarInmueblesAprobados();
     } catch (Exception e) {
         errorBD = e.getMessage();
     }
@@ -59,7 +59,7 @@
 <% } else if (conteo.isEmpty()) { %>
     <p class="suave">Aún no hay inmuebles publicados.</p>
 <% } %>
-<%-- Las 4 ciudades con más inmuebles publicados --%>
+<%-- Las 4 ciudades con más inmuebles aprobados --%>
 <div class="grid grid-4">
 <% int n = 0;
    for (Map.Entry<String, Long> c : conteo.entrySet()) {
@@ -96,7 +96,7 @@
 <div class="tarjeta llamado">
     <div>
         <h3>¿Tienes un inmueble para rentar?</h3>
-        <p class="suave">Regístrate como propietario y publícalo: aparece de inmediato en las búsquedas.</p>
+        <p class="suave">Regístrate como propietario y publícalo: será visible para los clientes cuando el administrador lo apruebe.</p>
     </div>
     <a class="btn" href="<%= ctx %>/registro.jsp">Publicar mi inmueble</a>
 </div>

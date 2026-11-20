@@ -1,6 +1,7 @@
 package com.rentainmuebles.datos;
 
 import com.rentainmuebles.modelo.Administrador;
+import com.rentainmuebles.modelo.Banco;
 import com.rentainmuebles.modelo.Cliente;
 import com.rentainmuebles.modelo.Perfil;
 import com.rentainmuebles.modelo.Propietario;
@@ -19,7 +20,7 @@ public class UsuarioDAO {
     // Une usuario con sus tres tablas hijas. Si aparece en varias, el rol principal es:
     // administrador, luego propietario, luego cliente.
     private static final String SELECT_BASE =
-          "SELECT u.id, u.nombre, u.telefono, u.email, u.contrasena, "
+          "SELECT u.id, u.nombre, u.telefono, u.email, u.contrasena, u.estado_cuenta, "
         + "       a.id AS es_admin, a.cargo, a.nivel_acceso, "
         + "       p.id AS es_prop, p.tipo_persona, p.calificacion AS calif_prop, "
         + "       c.id AS es_cli, c.calificacion AS calif_cli, ci.nombre AS ciudad_residencia, "
@@ -77,7 +78,7 @@ public class UsuarioDAO {
 
     /**
      * Crea un usuario nuevo con su rol y su cuenta bancaria, en una sola transacción.
-     * tipo: "cliente" o "propietario". Devuelve el id asignado.
+     * tipo: "cliente" o "propietario". Devuelve el id asignado. La cuenta nace "activo".
      */
     public int registrar(String tipo, String nombre, String telefono, String email, String contrasena,
                          int idCiudadResidencia, String tipoPersona,
@@ -87,8 +88,8 @@ public class UsuarioDAO {
             try {
                 // 1. Tabla padre: usuario (la contraseña se guarda cifrada)
                 int id;
-                String sqlUsuario = "INSERT INTO usuario (id, nombre, telefono, email, contrasena) "
-                                  + "VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM usuario), ?, ?, ?, ?) RETURNING id";
+                String sqlUsuario = "INSERT INTO usuario (id, nombre, telefono, email, contrasena, estado_cuenta) "
+                                  + "VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM usuario), ?, ?, ?, ?, 'activo') RETURNING id";
                 try (PreparedStatement ps = con.prepareStatement(sqlUsuario)) {
                     ps.setString(1, nombre);
                     ps.setString(2, telefono);
@@ -210,6 +211,34 @@ public class UsuarioDAO {
         return lista;
     }
 
+    /** Suspende o restaura una cuenta. nuevoEstado: "activo" o "inactivo". Devuelve true si la cambió. */
+    public boolean cambiarEstadoCuenta(int idUsuario, String nuevoEstado) throws SQLException {
+        try (Connection con = Conexion.obtener();
+             PreparedStatement ps = con.prepareStatement("UPDATE usuario SET estado_cuenta = ? WHERE id = ?")) {
+            ps.setString(1, nuevoEstado);
+            ps.setInt(2, idUsuario);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    /** Cuenta bancaria más reciente de un propietario, para abonarle las rentas. null si no tiene. */
+    public Banco obtenerCuentaPropietario(int idPropietario) throws SQLException {
+        String sql = "SELECT b.id, b.nombre, k.numero_cta, k.tipo_cta "
+                   + "FROM cuenta_propietario k JOIN banco b ON b.id = k.id_banco "
+                   + "WHERE k.id_propietario = ? ORDER BY k.id DESC LIMIT 1";
+        try (Connection con = Conexion.obtener();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, idPropietario);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new Banco(rs.getInt("id"), rs.getString("nombre"),
+                                     rs.getString("numero_cta"), rs.getString("tipo_cta"));
+                }
+            }
+        }
+        return null;
+    }
+
     // ======================= MÉTODOS DE APOYO =======================
 
     /**
@@ -243,6 +272,7 @@ public class UsuarioDAO {
         }
         if (u != null) {
             u.setDescripcionRoles(rs.getString("roles"));
+            u.setEstadoCuenta(rs.getString("estado_cuenta"));     // columna nueva: activo / inactivo
         }
         return u;
     }

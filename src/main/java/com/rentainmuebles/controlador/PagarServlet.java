@@ -1,6 +1,5 @@
 package com.rentainmuebles.controlador;
 
-import com.rentainmuebles.datos.InmuebleDAO;
 import com.rentainmuebles.modelo.Banco;
 import com.rentainmuebles.modelo.Cliente;
 import com.rentainmuebles.modelo.Inmueble;
@@ -17,7 +16,7 @@ import java.time.temporal.ChronoUnit;
 /**
  * CU-03 Realizar reserva: recibe la confirmación de pago.jsp.
  * Sigue el diagrama de secuencia: valida, verifica disponibilidad y llama a Cliente.reservar(),
- * que calcula el valor, vincula el pago con el Banco y registra la renta.
+ * que calcula el valor, vincula el pago con el Banco, registra la renta y abona al propietario.
  */
 @WebServlet("/cliente/pagar")
 public class PagarServlet extends HttpServlet {
@@ -69,17 +68,17 @@ public class PagarServlet extends HttpServlet {
         }
 
         try {
-            Inmueble inmueble = new InmuebleDAO().buscarPorId(idInmueble);
+            Inmueble inmueble = Inmueble.buscarPublicado(idInmueble);
             if (inmueble == null) {
                 response.sendRedirect(volver + "fechas");
                 return;
             }
-            // 5. Verifica disponibilidad por cruce de fechas (pasos 4-6 del diagrama de secuencia)
+            // 5. Se verifica de nuevo justo antes de pagar: otra persona pudo reservar mientras tanto
             if (!inmueble.estaDisponible(entrada, salida)) {
                 response.sendRedirect(volver + "ocupado");
                 return;
             }
-            // 6. El cliente reserva: calcula valor, vincula pago con el banco y registra la renta
+            // 6. El cliente reserva: calcula valor, cobra, registra la renta y abona al propietario
             Banco banco = new Banco(idBanco, nombreBanco, numeroCta, tipoCta);
             Renta renta = cliente.reservar(inmueble, entrada, salida, banco);
             if (renta == null) {

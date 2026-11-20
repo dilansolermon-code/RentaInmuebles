@@ -1,29 +1,28 @@
 <%-- CU-01 REGISTRARSE: crea una cuenta de Cliente o de Propietario. Lo procesa RegistroServlet --%>
 <%@ page contentType="text/html;charset=UTF-8"
          import="java.util.List, java.util.ArrayList,
-                 com.rentainmuebles.datos.CatalogoDAO, com.rentainmuebles.modelo.Ciudad, com.rentainmuebles.modelo.Banco" %>
+                 com.rentainmuebles.modelo.Ciudad, com.rentainmuebles.modelo.Banco" %>
 <%
     String titulo = "Registrarse";
     String rol = "publico";
 
-    // Ciudades y bancos desde la base de datos
+    // Ciudades y bancos: se los pedimos a sus clases
     List<Ciudad> ciudades = new ArrayList<>();
     List<Banco> bancos = new ArrayList<>();
     String errorBD = null;
     try {
-        CatalogoDAO catalogo = new CatalogoDAO();
-        ciudades = catalogo.listarCiudadesConId();
-        bancos = catalogo.listarBancos();
+        ciudades = Ciudad.listarTodas();
+        bancos = Banco.listarTodos();
     } catch (Exception e) {
         errorBD = e.getMessage();
     }
 
-    // Mensajes de error que devuelve RegistroServlet
+    // Mensajes de error que devuelve RegistroServlet (textos del CU-01)
     String error = request.getParameter("error");
     String mensaje = null;
-    if ("datos".equals(error))  mensaje = "Complete todos los campos correctamente (contraseña de mínimo 4 caracteres).";
+    if ("datos".equals(error))  mensaje = "Por favor, complete todos los campos correctamente (contraseña de mínimo 4 caracteres).";
     if ("cuenta".equals(error)) mensaje = "Revisa la cuenta bancaria: elige el banco y escribe de 6 a 16 dígitos.";
-    if ("email".equals(error))  mensaje = "El correo electrónico ya está en uso.";
+    if ("email".equals(error))  mensaje = "El correo electrónico ya está en uso. Por favor, inicie sesión o use otro correo.";
     if ("cuentaRepetida".equals(error)) mensaje = "Ese número de cuenta ya está registrado por otra persona. Escribe otro número de cuenta.";
     if ("clave".equals(error))  mensaje = "Ese correo ya está registrado con otro rol. Para agregar este rol usa la misma contraseña de tu cuenta.";
     if ("bd".equals(error))     mensaje = "No se pudo guardar en la base de datos. Intenta de nuevo.";
@@ -39,7 +38,7 @@
         </div>
     <% } %>
     <% if (errorBD != null) { %>
-        <div class="alerta alerta-aviso">No se pudo consultar la base de datos: <%= errorBD %></div>
+        <div class="alerta alerta-aviso">No se pudo consultar la base de datos: <%= com.rentainmuebles.util.Html.esc(errorBD) %></div>
     <% } %>
 
     <div class="tarjeta">

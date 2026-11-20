@@ -21,8 +21,10 @@ public class ReporteDAO {
         return numero("SELECT COUNT(*) FROM usuario");
     }
 
+    /** Inmuebles asociados a un propietario que no han sido retirados. */
     public long totalInmueblesPublicados() throws SQLException {
-        return numero("SELECT COUNT(DISTINCT id_inmueble) FROM propietario_inmueble");
+        return numero("SELECT COUNT(DISTINCT pi.id_inmueble) FROM propietario_inmueble pi "
+                    + "JOIN inmueble i ON i.id = pi.id_inmueble WHERE i.estado_aprobacion <> 'retirado'");
     }
 
     /** Rentas activas del periodo. */

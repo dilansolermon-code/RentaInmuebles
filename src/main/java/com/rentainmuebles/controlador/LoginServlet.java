@@ -1,6 +1,5 @@
 package com.rentainmuebles.controlador;
 
-import com.rentainmuebles.datos.UsuarioDAO;
 import com.rentainmuebles.modelo.Usuario;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -16,6 +15,7 @@ import java.util.List;
  * Recibe el formulario de login.jsp.
  * Busca TODOS los roles del correo y le pide a cada objeto que verifique la contraseña
  * (Usuario.iniciarSesion, como en el diagrama de clases).
+ * Si la cuenta está suspendida no la deja entrar.
  * Si la persona tiene un solo rol entra directo; si tiene varios, elige con cuál ingresar.
  */
 @WebServlet("/login")   // dirección: /RentaInmuebles/login
@@ -29,15 +29,21 @@ public class LoginServlet extends HttpServlet {
         String inicio = request.getContextPath();              // /RentaInmuebles
 
         try {
-            // 1. Roles del correo cuya contraseña coincide
+            // 1. Roles del correo cuya contraseña coincide (cada objeto se verifica a sí mismo)
             List<Usuario> roles = new ArrayList<>();
-            for (Usuario u : new UsuarioDAO().buscarRolesPorEmail(email)) {
+            boolean suspendida = false;                        // contraseña correcta pero cuenta inactiva
+            for (Usuario u : Usuario.buscarPorEmail(email)) {
                 if (u.iniciarSesion(email, contrasena)) {
-                    roles.add(u);
+                    if (u.estaActiva()) {
+                        roles.add(u);
+                    } else {
+                        suspendida = true;
+                    }
                 }
             }
             if (roles.isEmpty()) {
-                response.sendRedirect(inicio + "/login.jsp?error=datos");
+                // Solo se avisa de la suspensión si la contraseña era correcta
+                response.sendRedirect(inicio + "/login.jsp?error=" + (suspendida ? "inactiva" : "datos"));
                 return;
             }
 

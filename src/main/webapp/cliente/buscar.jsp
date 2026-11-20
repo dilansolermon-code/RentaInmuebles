@@ -1,11 +1,10 @@
 <%-- CU-02 BUSCAR INMUEBLES (con «extend» Filtrar por ciudad y capacidad). Datos desde PostgreSQL --%>
 <%@ page contentType="text/html;charset=UTF-8"
          import="java.util.List, java.util.ArrayList, java.util.Locale,
-                 com.rentainmuebles.datos.InmuebleDAO, com.rentainmuebles.datos.CatalogoDAO,
-                 com.rentainmuebles.modelo.Inmueble, com.rentainmuebles.modelo.Usuario" %>
+                 com.rentainmuebles.modelo.Ciudad, com.rentainmuebles.modelo.Inmueble, com.rentainmuebles.modelo.Usuario" %>
 <%
     String titulo = "Buscar inmuebles";
-    // Buscar es público: si hay un cliente con sesión se muestra su menú
+    // Buscar es público (perfil Visitante): si hay un cliente con sesión se muestra su menú
     Usuario u = (Usuario) session.getAttribute("usuario");
     String rol = (u != null && u.getRol().equals("cliente")) ? "cliente" : "publico";
 
@@ -21,13 +20,13 @@
         // si no llega o no es número, se deja en 1
     }
 
-    // 2. Consultar la base de datos
+    // 2. Pedir los datos a las clases del modelo
     List<String> ciudades = new ArrayList<>();
     List<Inmueble> inmuebles = new ArrayList<>();
     String errorBD = null;
     try {
-        ciudades = new CatalogoDAO().listarCiudades();
-        inmuebles = new InmuebleDAO().buscar(ciudad, personas);
+        ciudades = Ciudad.listarNombres();
+        inmuebles = Inmueble.buscarDisponibles(ciudad, personas);   // solo inmuebles aprobados
     } catch (Exception e) {
         errorBD = e.getMessage();                      // se muestra en pantalla para saber qué falló
     }
@@ -36,7 +35,7 @@
 <%@ include file="/WEB-INF/jspf/encabezado.jspf" %>
 
 <% if (errorBD != null) { %>
-    <div class="alerta alerta-aviso">No se pudo consultar la base de datos: <%= errorBD %></div>
+    <div class="alerta alerta-aviso">No se pudo consultar la base de datos: <%= com.rentainmuebles.util.Html.esc(errorBD) %></div>
 <% } %>
 
 <div class="col-filtros">
@@ -71,7 +70,7 @@
         </div>
 
         <% if (inmuebles.isEmpty() && errorBD == null) { %>
-            <div class="tarjeta">No se encontraron inmuebles con esos criterios.</div>
+            <div class="tarjeta">No se encontraron inmuebles con esos criterios. Intente con otros filtros.</div>
         <% } %>
 
         <div class="grid grid-3">

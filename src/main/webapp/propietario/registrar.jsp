@@ -1,8 +1,8 @@
 <%-- REGISTRAR O EDITAR INMUEBLE (propietario). Lo procesa InmuebleServlet --%>
 <%@ page contentType="text/html;charset=UTF-8"
          import="java.util.List, java.util.ArrayList,
-                 com.rentainmuebles.datos.InmuebleDAO, com.rentainmuebles.datos.CatalogoDAO,
-                 com.rentainmuebles.modelo.Inmueble, com.rentainmuebles.modelo.Ciudad, com.rentainmuebles.modelo.Usuario,
+                 com.rentainmuebles.modelo.Inmueble, com.rentainmuebles.modelo.Ciudad,
+                 com.rentainmuebles.modelo.Usuario, com.rentainmuebles.modelo.Propietario,
                  com.rentainmuebles.util.Html, com.rentainmuebles.util.Imagenes" %>
 <%
     // 1. Solo propietarios con sesión
@@ -11,6 +11,7 @@
         response.sendRedirect(request.getContextPath() + "/login.jsp?error=sesion");
         return;
     }
+    Propietario propietario = (Propietario) u;
     String rol = "propietario";
 
     // 2. ¿Nuevo o edición? registrar.jsp?id=5 edita el inmueble 5 (solo si es del propietario)
@@ -21,9 +22,9 @@
     List<Ciudad> ciudades = new ArrayList<>();
     String errorBD = null;
     try {
-        ciudades = new CatalogoDAO().listarCiudadesConId();
+        ciudades = Ciudad.listarTodas();
         if (idInmueble > 0) {
-            inm = new InmuebleDAO().buscarDelPropietario(u.getId(), idInmueble);
+            inm = propietario.buscarInmueblePropio(idInmueble);
         }
     } catch (Exception e) {
         errorBD = e.getMessage();
@@ -37,7 +38,7 @@
     <p><a href="inmuebles.jsp">&larr; Volver a mis inmuebles</a></p>
 
     <% if ("datos".equals(request.getParameter("error"))) { %>
-        <div class="alerta alerta-aviso">Complete todos los campos correctamente: los valores numéricos deben ser mayores que cero.</div>
+        <div class="alerta alerta-aviso">Por favor, complete todos los campos correctamente: los valores numéricos deben ser mayores que cero.</div>
     <% } %>
     <% if ("formato".equals(request.getParameter("error"))) { %>
         <div class="alerta alerta-aviso">La foto debe ser una imagen JPG, PNG o WEBP.</div>
@@ -53,7 +54,7 @@
 
     <div class="tarjeta">
         <h1><%= titulo %></h1>
-        <p class="suave">Los datos se guardan en las tablas inmueble y propietario_inmueble.</p>
+        <p class="suave"><%= editar ? "Estado actual: " + inm.getEstadoTexto() + "." : "Al registrarlo quedará pendiente de aprobación por el administrador." %></p>
 
         <%-- enctype="multipart/form-data": necesario para enviar archivos (la foto) --%>
         <form class="formulario" action="<%= ctx %>/propietario/inmueble" method="post" enctype="multipart/form-data">
@@ -102,7 +103,7 @@
                 <% if (editar) { %><p class="ayuda">Si no eliges una foto nueva, se conserva la actual.</p><% } %>
             </div>
 
-            <button class="btn" type="submit"><%= editar ? "Guardar cambios" : "Registrar y publicar" %></button>
+            <button class="btn" type="submit"><%= editar ? "Guardar cambios" : "Guardar" %></button>
         </form>
     </div>
 </div>

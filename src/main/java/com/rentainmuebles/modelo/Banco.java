@@ -1,9 +1,14 @@
 package com.rentainmuebles.modelo;
 
+import com.rentainmuebles.datos.CatalogoDAO;
+import com.rentainmuebles.datos.UsuarioDAO;
+import java.sql.SQLException;
+import java.util.List;
+
 /**
  * Banco (diagrama de clases). Sirve de dos formas:
  *  - como opción del catálogo (solo id y nombre), y
- *  - como la cuenta con la que el cliente paga (con número y tipo de cuenta:
+ *  - como la cuenta con la que se paga o se recibe el dinero (con número y tipo de cuenta:
  *    los atributos numero_cta y tipo_cta de la relación Vincula).
  */
 public class Banco {
@@ -24,6 +29,16 @@ public class Banco {
         this(id, nombre);                 // reutiliza el constructor de arriba
         this.numeroCta = numeroCta;
         this.tipoCta = tipoCta;
+    }
+
+    /** Todos los bancos del catálogo, en orden alfabético (para las listas desplegables). */
+    public static List<Banco> listarTodos() throws SQLException {
+        return new CatalogoDAO().listarBancos();
+    }
+
+    /** Cuenta bancaria registrada de un propietario (null si no tiene). */
+    public static Banco cuentaDePropietario(int idPropietario) throws SQLException {
+        return new UsuarioDAO().obtenerCuentaPropietario(idPropietario);
     }
 
     /**

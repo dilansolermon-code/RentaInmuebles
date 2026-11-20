@@ -1,7 +1,6 @@
 <%-- CU-06 CONSULTAR INMUEBLES PROPIOS (con opción "Ver reservas") y acciones del CU-05 --%>
 <%@ page contentType="text/html;charset=UTF-8"
          import="java.util.List, java.util.ArrayList, java.util.Locale, java.time.format.DateTimeFormatter,
-                 com.rentainmuebles.datos.ReporteDAO,
                  com.rentainmuebles.modelo.Inmueble, com.rentainmuebles.modelo.Renta,
                  com.rentainmuebles.modelo.Usuario, com.rentainmuebles.modelo.Propietario,
                  com.rentainmuebles.util.Html" %>
@@ -20,7 +19,7 @@
     int ver = 0;
     try { ver = Integer.parseInt(request.getParameter("ver")); } catch (Exception e) { }
 
-    // 3. Consultar inmuebles, reservas e indicadores
+    // 3. El propietario consulta sus inmuebles, reservas e indicadores
     List<Inmueble> inmuebles = new ArrayList<>();
     List<Renta> rentas = new ArrayList<>();
     Inmueble inmuebleVer = null;
@@ -35,11 +34,16 @@
                 rentas = propietario.consultarReservas(ver);
             }
         }
-        ReporteDAO reporte = new ReporteDAO();
-        rentasActivas = reporte.rentasActivasDePropietario(u.getId());
-        ingresos = reporte.ingresosDePropietario(u.getId());
+        rentasActivas = propietario.contarReservasActivas();
+        ingresos = propietario.calcularIngresos();
     } catch (Exception e) {
         errorBD = e.getMessage();
+    }
+
+    // Inmuebles publicados = los que no están retirados
+    int publicados = 0;
+    for (Inmueble i : inmuebles) {
+        if (!i.estaRetirado()) publicados++;
     }
     DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     String error = request.getParameter("error");
@@ -47,7 +51,7 @@
 <%@ include file="/WEB-INF/jspf/encabezado.jspf" %>
 
 <% if (request.getParameter("registrado") != null) { %>
-    <div class="alerta alerta-ok">Inmueble registrado. Ya aparece en las búsquedas.</div>
+    <div class="alerta alerta-ok">Inmueble registrado. Será visible para los clientes cuando el administrador lo apruebe.</div>
 <% } %>
 <% if (request.getParameter("actualizado") != null) { %>
     <div class="alerta alerta-ok">Los datos del inmueble se actualizaron.</div>
@@ -67,29 +71,31 @@
 <div class="titulo-seccion">
     <div>
         <h1>Mis inmuebles</h1>
-        <p class="suave">Administra los inmuebles que tienes publicados para renta.</p>
+        <p class="suave">Administra tus inmuebles. Solo los aprobados por el administrador se muestran a los clientes.</p>
     </div>
     <a class="btn" href="registrar.jsp">+ Registrar inmueble</a>
 </div>
 
 <%-- Indicadores --%>
 <div class="grid grid-3" style="margin-bottom:1.25rem">
-    <div class="tarjeta kpi"><div class="valor"><%= inmuebles.size() %></div><div class="etiqueta">Inmuebles publicados</div></div>
+    <div class="tarjeta kpi"><div class="valor"><%= publicados %></div><div class="etiqueta">Inmuebles publicados</div></div>
     <div class="tarjeta kpi"><div class="valor"><%= rentasActivas %></div><div class="etiqueta">Reservas activas</div></div>
     <div class="tarjeta kpi"><div class="valor">$<%= String.format(Locale.US, "%,d", ingresos).replace(',', '.') %></div><div class="etiqueta">Ingresos por reservas activas</div></div>
 </div>
 
-<%-- Listado de inmuebles con datos --%>
+<%-- Listado de inmuebles con datos y estado --%>
 <div class="tarjeta tabla-envoltura" style="padding:0">
     <table>
         <thead>
-            <tr><th>Id</th><th>Dirección</th><th>Ciudad</th><th>Hab.</th><th>Capacidad</th><th>Precio/noche</th><th>Acciones</th></tr>
+            <tr><th>Id</th><th>Dirección</th><th>Ciudad</th><th>Hab.</th><th>Capacidad</th><th>Precio/noche</th><th>Estado</th><th>Acciones</th></tr>
         </thead>
         <tbody>
-        <% if (inmuebles.isEmpty()) { %>
-            <tr><td colspan="7" class="suave">Aún no tienes inmuebles registrados.</td></tr>
+        <% if (inmuebles.isEmpty() && errorBD == null) { %>
+            <tr><td colspan="8" class="suave">Aún no tienes inmuebles registrados. Registra tu primer inmueble.</td></tr>
         <% } %>
-        <% for (Inmueble i : inmuebles) { %>
+        <% for (Inmueble i : inmuebles) {
+               String claseEst = i.estaAprobado() ? "ok" : (i.getEstadoTexto().equals("Pendiente") ? "neutro" : "mal");
+        %>
             <tr>
                 <td><%= i.getId() %></td>
                 <td><%= Html.esc(i.getDireccion()) %></td>
@@ -97,8 +103,10 @@
                 <td><%= i.getNumeroHabitaciones() %></td>
                 <td><%= i.getCapacidad() %></td>
                 <td>$<%= String.format(Locale.US, "%,.0f", i.getPrecioNoche()).replace(',', '.') %></td>
+                <td><span class="insignia <%= claseEst %>"><%= i.getEstadoTexto() %></span></td>
                 <td>
                     <a class="btn btn-peq" href="inmuebles.jsp?ver=<%= i.getId() %>#reservas">Ver reservas</a>
+                    <% if (!i.estaRetirado()) { %>
                     <a class="btn btn-sec btn-peq" href="registrar.jsp?id=<%= i.getId() %>">Editar</a>
                     <%-- Retirar pide confirmación (CU-05: "Solicita confirmación" / "Confirma retiro") --%>
                     <form action="<%= ctx %>/propietario/inmueble" method="post" style="display:inline"
@@ -107,6 +115,7 @@
                         <input type="hidden" name="idInmueble" value="<%= i.getId() %>">
                         <button class="btn btn-peligro btn-peq" type="submit">Retirar</button>
                     </form>
+                    <% } %>
                 </td>
             </tr>
         <% } %>

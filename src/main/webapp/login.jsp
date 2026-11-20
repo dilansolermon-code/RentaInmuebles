@@ -3,7 +3,7 @@
 <%
     String titulo = "Iniciar sesión";
     String rol = "publico";
-    String error = request.getParameter("error");   // "datos", "bd" o "sesion"
+    String error = request.getParameter("error");   // "datos", "inactiva", "bd" o "sesion"
 %>
 <%@ include file="/WEB-INF/jspf/encabezado.jspf" %>
 
@@ -15,6 +15,8 @@
     <% } %>
     <% if ("datos".equals(error)) { %>
         <div class="alerta alerta-aviso">Correo o contraseña incorrectos.</div>
+    <% } else if ("inactiva".equals(error)) { %>
+        <div class="alerta alerta-aviso">Tu cuenta está suspendida. Comunícate con el administrador de la plataforma.</div>
     <% } else if ("bd".equals(error)) { %>
         <div class="alerta alerta-aviso">No hay conexión con la base de datos. Revisa que PostgreSQL esté encendido y la contraseña en Conexion.java.</div>
     <% } else if ("sesion".equals(error)) { %>

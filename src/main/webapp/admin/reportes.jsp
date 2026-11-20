@@ -1,8 +1,8 @@
 <%-- CU-09 CONSULTAR REPORTES: tipo de reporte y rango de fechas, como en los diagramas de actividades y secuencia --%>
 <%@ page contentType="text/html;charset=UTF-8"
-         import="java.util.Map, java.util.LinkedHashMap, java.util.Locale, java.time.LocalDate,
-                 com.rentainmuebles.datos.ReporteDAO, com.rentainmuebles.modelo.Usuario,
-                 com.rentainmuebles.modelo.Administrador, com.rentainmuebles.util.Html" %>
+         import="java.util.Map, java.util.Locale, java.time.LocalDate,
+                 com.rentainmuebles.modelo.Usuario, com.rentainmuebles.modelo.Administrador,
+                 com.rentainmuebles.modelo.Reporte, com.rentainmuebles.util.Html" %>
 <%
     Usuario u = (Usuario) session.getAttribute("usuario");
     if (u == null || !u.getRol().equals("admin")) {
@@ -33,32 +33,16 @@
         fechasValidas = false;
     }
 
-    // 2. Consultar rentas, inmuebles y ciudades del periodo
-    long usuarios = 0, inmuebles = 0, activas = 0, canceladas = 0, valor = 0;
-    Map<String, Long> datos = new LinkedHashMap<>();
+    // 2. El administrador genera el reporte: un objeto que ya trae totales y cálculos
+    Reporte reporte = null;
     String errorBD = null;
     if (fechasValidas) {
         try {
-            ReporteDAO r = new ReporteDAO();
-            usuarios = r.totalUsuarios();
-            inmuebles = r.totalInmueblesPublicados();
-            activas = r.rentasActivas(desde, hasta);
-            canceladas = r.rentasCanceladas(desde, hasta);
-            valor = r.valorRentasActivas(desde, hasta);
-            datos = admin.consultarReportes(tipo, desde, hasta);   // agrupa información y calcula totales
+            reporte = admin.consultarReportes(tipo, desde, hasta);
         } catch (Exception e) {
             errorBD = e.getMessage();
         }
     }
-
-    // El mayor valor define el 100 % de las barras; también se calcula el total de la tabla
-    long maximo = 1;
-    long totalTabla = 0;
-    for (long cantidad : datos.values()) {
-        maximo = Math.max(maximo, cantidad);
-        totalTabla += cantidad;
-    }
-    boolean esDinero = tipo.equals("ingresos");
 %>
 <%@ include file="/WEB-INF/jspf/encabezado.jspf" %>
 
@@ -98,33 +82,33 @@
     <button class="btn" type="submit">Generar</button>
 </form>
 
-<% if (fechasValidas && errorBD == null) { %>
+<% if (reporte != null) {
+       boolean esDinero = reporte.esDinero();
+%>
 <div class="grid grid-4">
-    <div class="tarjeta kpi"><div class="valor"><%= activas %></div><div class="etiqueta">Rentas activas del periodo</div></div>
-    <div class="tarjeta kpi"><div class="valor">$<%= String.format(Locale.US, "%,d", valor).replace(',', '.') %></div><div class="etiqueta">Valor de rentas activas (COP)</div></div>
-    <div class="tarjeta kpi"><div class="valor"><%= canceladas %></div><div class="etiqueta">Rentas canceladas del periodo</div></div>
-    <div class="tarjeta kpi"><div class="valor"><%= inmuebles %> / <%= usuarios %></div><div class="etiqueta">Inmuebles publicados / usuarios</div></div>
+    <div class="tarjeta kpi"><div class="valor"><%= reporte.getRentasActivas() %></div><div class="etiqueta">Rentas activas del periodo</div></div>
+    <div class="tarjeta kpi"><div class="valor">$<%= String.format(Locale.US, "%,d", reporte.getValorRentasActivas()).replace(',', '.') %></div><div class="etiqueta">Valor de rentas activas (COP)</div></div>
+    <div class="tarjeta kpi"><div class="valor"><%= reporte.getRentasCanceladas() %></div><div class="etiqueta">Rentas canceladas del periodo</div></div>
+    <div class="tarjeta kpi"><div class="valor"><%= reporte.getInmueblesPublicados() %> / <%= reporte.getTotalUsuarios() %></div><div class="etiqueta">Inmuebles publicados / usuarios</div></div>
 </div>
 
 <div class="tarjeta" style="margin-top:1.25rem">
-    <h3><%= tipo.equals("ingresos") ? "Ingresos por ciudad" : (tipo.equals("inmuebles") ? "Inmuebles más rentados" : "Rentas activas por ciudad") %></h3>
-    <% if (datos.isEmpty()) { %>
+    <h3><%= reporte.getTitulo() %></h3>
+    <% if (reporte.estaVacio()) { %>
         <p class="suave">No hay información para el periodo seleccionado.</p>
     <% } else { %>
     <table>
         <thead><tr><th><%= tipo.equals("inmuebles") ? "Inmueble" : "Ciudad" %></th><th></th><th><%= esDinero ? "Valor (COP)" : "Rentas" %></th></tr></thead>
-        <% for (Map.Entry<String, Long> fila : datos.entrySet()) {
-               long ancho = fila.getValue() * 100 / maximo;          // porcentaje de la barra
-        %>
+        <% for (Map.Entry<String, Long> fila : reporte.getDatos().entrySet()) { %>
             <tr>
                 <td><%= Html.esc(fila.getKey()) %></td>
-                <td style="width:45%"><div class="barra-dato"><div style="width:<%= ancho %>%"></div></div></td>
+                <td style="width:45%"><div class="barra-dato"><div style="width:<%= reporte.porcentaje(fila.getValue()) %>%"></div></div></td>
                 <td><%= esDinero ? "$" + String.format(Locale.US, "%,d", fila.getValue()).replace(',', '.') : fila.getValue() %></td>
             </tr>
         <% } %>
         <tr>
             <td><strong>Total</strong></td><td></td>
-            <td><strong><%= esDinero ? "$" + String.format(Locale.US, "%,d", totalTabla).replace(',', '.') : totalTabla %></strong></td>
+            <td><strong><%= esDinero ? "$" + String.format(Locale.US, "%,d", reporte.getTotal()).replace(',', '.') : reporte.getTotal() %></strong></td>
         </tr>
     </table>
     <% } %>

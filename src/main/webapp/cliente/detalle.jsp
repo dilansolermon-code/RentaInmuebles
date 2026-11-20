@@ -1,7 +1,6 @@
 <%-- CU-03 REALIZAR RESERVA: detalle del inmueble (datos desde PostgreSQL) --%>
 <%@ page contentType="text/html;charset=UTF-8"
          import="java.util.Locale, java.time.LocalDate,
-                 com.rentainmuebles.datos.InmuebleDAO,
                  com.rentainmuebles.modelo.Inmueble, com.rentainmuebles.modelo.Usuario" %>
 <%
     String titulo = "Detalle del inmueble";
@@ -12,7 +11,7 @@
     Inmueble inm = null;
     String errorBD = null;
     try {
-        inm = new InmuebleDAO().buscarPorId(Integer.parseInt(request.getParameter("id")));
+        inm = Inmueble.buscarPublicado(Integer.parseInt(request.getParameter("id")));
     } catch (NumberFormatException e) {
         // id vacío o no numérico: inm queda en null
     } catch (Exception e) {
@@ -27,9 +26,14 @@
 
 <p><a href="buscar.jsp">&larr; Volver a los resultados</a></p>
 
+<%-- «extend» Cancelar reserva desde el resumen: no se registró nada --%>
+<% if (request.getParameter("cancelada") != null) { %>
+    <div class="alerta alerta-aviso">Reserva cancelada. No se realizó ningún cobro y las fechas quedaron libres.</div>
+<% } %>
+
 <% if (inm == null) { %>
     <div class="alerta alerta-aviso">
-        <%= errorBD != null ? "No se pudo consultar la base de datos: " + errorBD : "El inmueble no existe." %>
+        <%= errorBD != null ? "No se pudo consultar la base de datos: " + com.rentainmuebles.util.Html.esc(errorBD) : "El inmueble no existe." %>
     </div>
 <% } else {
        String precio = String.format(Locale.US, "%,.0f", inm.getPrecioNoche()).replace(',', '.');
@@ -49,7 +53,7 @@
         </div>
     </section>
 
-    <%-- Columna derecha: elegir fechas y continuar al pago --%>
+    <%-- Columna derecha: elegir fechas y continuar al resumen --%>
     <aside class="tarjeta">
         <p><span class="precio" style="font-size:1.4rem">$<%= precio %></span> <span class="suave">/ noche</span></p>
 
@@ -70,7 +74,7 @@
                 <input type="number" id="personas" name="personas" min="1" max="<%= inm.getCapacidad() %>" value="1">
             </div>
 
-            <div class="alerta alerta-ok" id="aviso">La disponibilidad se verifica al pagar</div>
+            <div class="alerta alerta-ok" id="aviso">Al continuar se verifica la disponibilidad de esas fechas</div>
 
             <div class="resumen">
                 <div><span>$<%= precio %> x <span id="noches">3</span> noches</span><span id="subtotal"></span></div>
@@ -86,7 +90,7 @@
 </div>
 
 <script>
-    // Calcula noches y total en pantalla (el valor definitivo lo calcula el servidor al pagar)
+    // Calcula noches y total en pantalla (el valor definitivo lo calcula el servidor)
     function calcularTotal() {
         var precioNoche = <%= (long) inm.getPrecioNoche() %>;                 // viene de la base de datos
         var entrada = new Date(document.getElementById('entrada').value);
@@ -99,7 +103,7 @@
             noches = 0;
         } else {
             aviso.className = 'alerta alerta-ok';
-            aviso.textContent = 'La disponibilidad se verifica al pagar';
+            aviso.textContent = 'Al continuar se verifica la disponibilidad de esas fechas';
         }
         var total = '$' + (precioNoche * noches).toLocaleString('es-CO');
         document.getElementById('noches').textContent = noches;
